@@ -8,8 +8,6 @@ import { Sparkles, ArrowRight, ShieldCheck, CreditCard, MapPin, Phone, User, Tru
 export default function Home() {
   const tirthMarathi = "तीर्थ";
   const tagline = "परम् तृप्तिः अस्माकं व्रतम्";
-  const annapurnaQuote = "अन्नं ब्रह्मेति व्यजनात्";
-  const annapoorna = "अन्न हे पूर्णब्रह्म";
 
   return (
     <div className="min-h-screen bg-[#F4F7ED] flex flex-col justify-between text-charcoal">
@@ -48,9 +46,6 @@ export default function Home() {
                 <div className="border-l-4 border-saffron pl-4 text-left max-w-xl mx-auto">
                   <p className="font-noto-dev text-xl sm:text-2xl text-saffron-dark font-bold leading-snug">
                     &ldquo;{tagline}&rdquo;
-                  </p>
-                  <p className="font-noto-dev text-xs text-leaf mt-1.5 font-medium tracking-wide">
-                    {annapoorna} — {annapurnaQuote}
                   </p>
                 </div>
 
