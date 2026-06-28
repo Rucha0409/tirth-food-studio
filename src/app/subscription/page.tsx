@@ -77,7 +77,7 @@ export default function SubscriptionPage() {
       startDate: new Date().toISOString()
     };
 
-    const newSub = dbService.createSubscription(subData);
+    const newSub = await dbService.createSubscription(subData);
     setCreatedSub(newSub);
     setPaymentStep('success');
     setIsProcessing(false);

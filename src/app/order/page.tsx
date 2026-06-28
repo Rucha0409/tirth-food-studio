@@ -103,8 +103,11 @@ export default function OrderPage() {
 
   // Fetch initial data
   useEffect(() => {
-    setMenu(dbService.getMenu());
-    setSettings(dbService.getSettings());
+    const fetchData = async () => {
+      setMenu(await dbService.getMenu());
+      setSettings(await dbService.getSettings());
+    };
+    fetchData();
 
     // Default date to today
     const today = new Date();
@@ -234,7 +237,7 @@ export default function OrderPage() {
     return `https://api.whatsapp.com/send?phone=918380070757&text=${message}`;
   };
 
-  const completeOrderDetails = (paymentId: string) => {
+  const completeOrderDetails = async (paymentId: string) => {
     const orderItems = selectedItems.map(item => ({
       menuItem: item,
       quantity: quantities[item.id]
@@ -256,7 +259,7 @@ export default function OrderPage() {
       timeSlot: `${deliveryDate} | ${timeSlot}`
     };
 
-    const newOrder = dbService.createOrder(orderData);
+    const newOrder = await dbService.createOrder(orderData);
     setSuccessOrder(newOrder);
 
     // Reset checkout states
@@ -338,7 +341,7 @@ export default function OrderPage() {
               const verifyData = await verifyRes.json();
               
               if (verifyData.success) {
-                completeOrderDetails(response.razorpay_payment_id);
+                await completeOrderDetails(response.razorpay_payment_id);
               } else {
                 alert("Payment Verification Failed! Please contact support.");
               }
@@ -394,7 +397,7 @@ export default function OrderPage() {
     setRzpStep('Payment received successfully!');
     await new Promise(r => setTimeout(r, 400));
 
-    completeOrderDetails('pay_Tirth_' + Math.floor(100000 + Math.random() * 900000).toString());
+    await completeOrderDetails('pay_Tirth_' + Math.floor(100000 + Math.random() * 900000).toString());
   };
 
 

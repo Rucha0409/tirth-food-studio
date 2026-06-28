@@ -97,11 +97,11 @@ export default function AdminDashboard() {
     }
   }, [router]);
 
-  const loadDBData = () => {
-    setOrders(dbService.getOrders());
-    setMenu(dbService.getMenu());
-    setSettings(dbService.getSettings());
-    setMetrics(dbService.getMetrics());
+  const loadDBData = async () => {
+    setOrders(await dbService.getOrders());
+    setMenu(await dbService.getMenu());
+    setSettings(await dbService.getSettings());
+    setMetrics(await dbService.getMetrics());
   };
 
   const handleLogout = () => {
@@ -112,29 +112,29 @@ export default function AdminDashboard() {
   };
 
   // ORDER ACTION STATUS CHANGERS
-  const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
-    dbService.updateOrderStatus(orderId, status);
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    await dbService.updateOrderStatus(orderId, status);
     loadDBData();
   };
 
   // MENU DYNAMIC STOCK TOGGLERS
-  const handleToggleAvailable = (item: MenuItem) => {
+  const handleToggleAvailable = async (item: MenuItem) => {
     const updated = { ...item, isAvailable: !item.isAvailable };
-    dbService.updateMenuItem(updated);
+    await dbService.updateMenuItem(updated);
     loadDBData();
   };
 
-  const handleToggleSpecial = (item: MenuItem) => {
+  const handleToggleSpecial = async (item: MenuItem) => {
     const updated = { ...item, isSpecial: !item.isSpecial };
-    dbService.updateMenuItem(updated);
+    await dbService.updateMenuItem(updated);
     loadDBData();
   };
 
   // MENU CRUD TRIGGERS
-  const handleAddDishSubmit = (e: React.FormEvent) => {
+  const handleAddDishSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const isSpecial = newDish.category === 'special';
-    dbService.addMenuItem({
+    await dbService.addMenuItem({
       ...newDish,
       isPreorder: isSpecial,
       isFastFood: !isSpecial
@@ -161,11 +161,11 @@ export default function AdminDashboard() {
     loadDBData();
   };
 
-  const handleEditDishSubmit = (e: React.FormEvent) => {
+  const handleEditDishSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingItem) {
       const isSpecial = editingItem.category === 'special';
-      dbService.updateMenuItem({
+      await dbService.updateMenuItem({
         ...editingItem,
         isPreorder: isSpecial,
         isFastFood: !isSpecial
@@ -176,17 +176,17 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteDish = (id: string) => {
+  const handleDeleteDish = async (id: string) => {
     if (confirm('Are you sure you want to delete this homely delicacy from the menu?')) {
-      dbService.deleteMenuItem(id);
+      await dbService.deleteMenuItem(id);
       loadDBData();
     }
   };
 
   // KITCHEN GLOBAL SETTINGS SAVERS
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    dbService.saveSettings(settings);
+    await dbService.saveSettings(settings);
     alert('Kitchen Settings successfully saved and updated across user channels!');
     loadDBData();
   };

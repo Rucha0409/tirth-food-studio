@@ -172,7 +172,7 @@ export default function CartPage() {
       paymentId: 'pay_RZR_' + Math.random().toString(36).substr(2, 9).toUpperCase()
     };
 
-    const newOrder = dbService.createOrder(orderData);
+    const newOrder = await dbService.createOrder(orderData);
     setCreatedOrder(newOrder);
     setPaymentStep('success');
     setIsProcessing(false);

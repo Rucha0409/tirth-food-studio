@@ -16,8 +16,11 @@ export default function MenuPage() {
 
   // Load menu from local DB
   useEffect(() => {
-    const data = dbService.getMenu();
-    setMenu(data);
+    const fetchMenu = async () => {
+      const data = await dbService.getMenu();
+      setMenu(data);
+    };
+    fetchMenu();
   }, []);
 
   const categories = [

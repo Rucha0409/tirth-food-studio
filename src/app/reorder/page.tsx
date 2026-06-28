@@ -14,9 +14,11 @@ export default function ReorderPage() {
   const [orders, setOrders] = useState<Order[]>([]);
 
   useEffect(() => {
-    // Fetch previous orders from local storage
-    const pastOrders = dbService.getOrders();
-    setOrders(pastOrders);
+    const fetchOrders = async () => {
+      const pastOrders = await dbService.getOrders();
+      setOrders(pastOrders);
+    };
+    fetchOrders();
   }, []);
 
   const handleReorder = (order: Order) => {

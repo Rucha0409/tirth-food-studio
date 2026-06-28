@@ -22,7 +22,7 @@ interface CartContextType {
   discount: number;
   total: number;
   settings: AdminSettings;
-  refreshSettings: () => void;
+  refreshSettings: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -54,8 +54,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const refreshSettings = () => {
-    const s = dbService.getSettings();
+  const refreshSettings = async () => {
+    const s = await dbService.getSettings();
     setSettings(s);
   };
 
