@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Yatra+One&family=Cinzel:wght@500;700;900&family=Oleo+Script:wght@400;700&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Serif+Devanagari:wght@400;500;600;700;900&family=Modak&display=swap&subset=devanagari,latin');
+@import "tailwindcss";
+
+:root {
+  --background: #F4F7ED;
+  --foreground: #2C2520;
+  --saffron: #D48C46;
+  --saffron-light: #E5A96A;
+  --saffron-dark: #9E5D24;
+  --leaf: #4A5D4E;
+  --leaf-light: #8F9F7E;
+  --leaf-dark: #2B3D2E;
+  --cream: #FAF8F5;
+  --cream-light: #FDFCFB;
+  --cream-dark: #E6EED5;
+  --brass: #C19A5B;
+  --charcoal: #2C2520;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-saffron: var(--saffron);
+  --color-saffron-light: var(--saffron-light);
+  --color-saffron-dark: var(--saffron-dark);
+  --color-leaf: var(--leaf);
+  --color-leaf-light: var(--leaf-light);
+  --color-leaf-dark: var(--leaf-dark);
+  --color-cream: var(--cream);
+  --color-cream-light: var(--cream-light);
+  --color-cream-dark: var(--cream-dark);
+  --color-brass: var(--brass);
+  --color-charcoal: var(--charcoal);
+
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-steam: steam 2s ease-in-out infinite;
+  --animate-spin-slow: spin-slow 20s linear infinite;
+  --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in: fade-in 0.3s ease-out;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes steam {
+    0% { transform: translateY(0) scale(0.9); opacity: 0.2; }
+    50% { transform: translateY(-4px) scale(1.1); opacity: 0.6; }
+    100% { transform: translateY(-8px) scale(1.2); opacity: 0; }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom premium design classes */
+.satvik-card {
+  background: var(--cream-light);
+  border: 2px solid rgba(74, 93, 78, 0.25);
+  box-shadow: 0 4px 20px -2px rgba(44, 37, 32, 0.04);
+  border-radius: 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.satvik-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px -4px rgba(44, 37, 32, 0.08);
+  border-color: rgba(74, 93, 78, 0.5);
+}
+
+.madhuram-card {
+  background: var(--cream-light);
+  border: 1.5px solid rgba(74, 93, 78, 0.12);
+  box-shadow: 4px 6px 20px -4px rgba(44, 37, 32, 0.04);
+  border-radius: 40px 8px 24px 24px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.madhuram-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 8px 12px 30px -6px rgba(74, 93, 78, 0.12);
+  border-color: rgba(143, 159, 126, 0.5);
+}
+
+.font-cursive {
+  font-family: 'Oleo Script', cursive;
+}
+
+.font-yatra {
+  font-family: var(--font-yatra), 'Yatra One', cursive;
+}
+
+.font-rozha {
+  font-family: var(--font-rozha), 'Rozha One', serif;
+}
+
+.font-cinzel {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+}
+
+.font-lora {
+  font-family: var(--font-lora), 'Lora', serif;
+}
+
+.font-noto-dev {
+  font-family: var(--font-noto-dev), 'Noto Serif Devanagari', serif;
+}
+
+.font-modak {
+  font-family: 'Modak', cursive;
+}
+
+/* Traditional border styles */
+.border-indian-pattern {
+  position: relative;
+}
+
+.border-indian-pattern::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-image: radial-gradient(var(--saffron) 20%, transparent 20%),
+                    radial-gradient(var(--brass) 20%, transparent 20%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+/* Steaming effect for graphic assets */
+.steam-line {
+  stroke-dasharray: 20;
+  animation: steam-flow 2s linear infinite;
+}
+
+@keyframes steam-flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--cream);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--leaf-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--leaf);
+}
+
+
+/* ==========================================
+   BANANA LEAF & CUSTOM INPUT UTILITY STYLES
+   ========================================== */
+.banana-leaf-bg {
+  background: radial-gradient(circle at 50% 120%, #8EB652 0%, #688B35 70%, #4D6925 100%);
+  border: 4px solid #FAF8F5;
+  box-shadow: 0 15px 40px -10px rgba(77, 105, 37, 0.45);
+  position: relative;
+  overflow: hidden;
+  border-radius: 80px 80px 40px 40px;
+}
+
+.banana-leaf-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background-image: repeating-linear-gradient(
+    65deg,
+    transparent,
+    transparent 15px,
+    #FAF8F5 15px,
+    #FAF8F5 17px
+  );
+  pointer-events: none;
+}
+
+.banana-leaf-input {
+  background-color: #FAF8F5 !important;
+  border: 2px solid #DCE6D2 !important;
+  color: #2C2520 !important;
+  font-weight: 700 !important;
+  border-radius: 14px !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.banana-leaf-input:focus {
+  border-color: #8EB652 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 4px rgba(142, 182, 82, 0.25) !important;
+}
+
+.banana-leaf-label {
+  color: #FAF8F5;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: block;
+}
