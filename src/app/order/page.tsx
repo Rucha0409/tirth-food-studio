@@ -465,7 +465,7 @@ export default function OrderPage() {
           >
             +
           </button>
-          <span className="text-[10px] text-charcoal/40 font-bold ml-1.5">₹{item.price}</span>
+          <span className="text-sm font-black text-leaf-dark ml-2 tracking-tight">₹{item.price}</span>
         </div>
 
         {/* Bilingual Title */}
@@ -477,7 +477,7 @@ export default function OrderPage() {
         </div>
 
         {/* Dynamic Subtotal Pill */}
-        <div className="w-full p-1.5 bg-cream border border-leaf-light/25 rounded-full text-center text-xs font-bold text-leaf">
+        <div className="w-full p-2 bg-[#E6EED5] border-2 border-leaf/30 rounded-full text-center text-sm font-black text-leaf-dark">
           ₹{itemSubtotal.toFixed(2)}/-
         </div>
       </div>
