@@ -560,7 +560,7 @@ export default function OrderPage() {
                 <div>
                   <div className="flex items-center gap-3 mb-5">
                     <div>
-                      <span className="text-2xl font-black text-leaf-dark tracking-tight block">Customized Remaining</span>
+                      <span className="text-2xl font-black text-leaf-dark tracking-tight block">Customize Your Order</span>
                       <span className="text-[10px] text-charcoal/40 font-bold">Rice, sides, pickles & accompaniments</span>
                     </div>
                     <div className="flex-1 h-0.5 bg-leaf-light/20 rounded-full"></div>
