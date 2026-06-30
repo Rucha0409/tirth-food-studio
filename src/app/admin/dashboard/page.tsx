@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MenuItem, Order, AdminSettings, dbService } from '@/lib/db';
+import { MenuItem, Order, AdminSettings, dbService, subscribeToMenu, subscribeToSettings, subscribeToOrders } from '@/lib/db';
 import { 
   TrendingUp, 
   ShoppingBag, 
@@ -82,26 +82,52 @@ export default function AdminDashboard() {
 
     if (!isLogged || !sessionToken || !sessionExpiry) {
       router.push('/admin');
-    } else {
-      const expiry = parseInt(sessionExpiry);
-      if (Date.now() >= expiry) {
-        // Session expired
-        localStorage.removeItem('tirth_admin_session');
-        localStorage.removeItem('tirth_admin_session_expiry');
-        localStorage.removeItem('tirth_admin_logged');
-        router.push('/admin');
-      } else {
-        setAuthorized(true);
-        loadDBData();
-      }
+      return;
     }
+    const expiry = parseInt(sessionExpiry);
+    if (Date.now() >= expiry) {
+      localStorage.removeItem('tirth_admin_session');
+      localStorage.removeItem('tirth_admin_session_expiry');
+      localStorage.removeItem('tirth_admin_logged');
+      router.push('/admin');
+      return;
+    }
+    setAuthorized(true);
+    const cleanup = loadDBData();
+    return cleanup;
   }, [router]);
 
-  const loadDBData = async () => {
-    setOrders(await dbService.getOrders());
-    setMenu(await dbService.getMenu());
-    setSettings(await dbService.getSettings());
-    setMetrics(await dbService.getMetrics());
+  // Real-time DB Listeners — data updates instantly across all devices
+  const loadDBData = () => {
+    const unsubOrders = subscribeToOrders((newOrders) => {
+      setOrders(newOrders);
+      // Recompute metrics whenever orders change
+      const validOrders = newOrders.filter(o => o.status !== 'Cancelled');
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayOrders = validOrders.filter(o => o.createdAt.startsWith(todayStr));
+      const revenue = validOrders.reduce((sum, o) => sum + o.total, 0);
+      const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
+      const itemsCount: { [key: string]: { name: string; count: number; category: string } } = {};
+      validOrders.forEach(o => {
+        o.items.forEach(i => {
+          if (!itemsCount[i.menuItem.id]) {
+            itemsCount[i.menuItem.id] = { name: i.menuItem.name, count: 0, category: i.menuItem.category };
+          }
+          itemsCount[i.menuItem.id].count += i.quantity;
+        });
+      });
+      setMetrics({
+        totalOrders: validOrders.length,
+        todayOrdersCount: todayOrders.length,
+        totalRevenue: revenue,
+        todayRevenue,
+        topSelling: Object.values(itemsCount).sort((a, b) => b.count - a.count).slice(0, 5),
+        pendingOrdersCount: validOrders.filter(o => o.status === 'Pending' || o.status === 'Preparing').length
+      });
+    });
+    const unsubMenu = subscribeToMenu((items) => setMenu(items));
+    const unsubSettings = subscribeToSettings((s) => setSettings(s));
+    return () => { unsubOrders(); unsubMenu(); unsubSettings(); };
   };
 
   const handleLogout = () => {
@@ -114,20 +140,20 @@ export default function AdminDashboard() {
   // ORDER ACTION STATUS CHANGERS
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     await dbService.updateOrderStatus(orderId, status);
-    loadDBData();
+    // Real-time listener auto-refreshes orders
   };
 
   // MENU DYNAMIC STOCK TOGGLERS
   const handleToggleAvailable = async (item: MenuItem) => {
     const updated = { ...item, isAvailable: !item.isAvailable };
     await dbService.updateMenuItem(updated);
-    loadDBData();
+    // Real-time listener auto-refreshes menu
   };
 
   const handleToggleSpecial = async (item: MenuItem) => {
     const updated = { ...item, isSpecial: !item.isSpecial };
     await dbService.updateMenuItem(updated);
-    loadDBData();
+    // Real-time listener auto-refreshes menu
   };
 
   // MENU CRUD TRIGGERS
@@ -158,7 +184,7 @@ export default function AdminDashboard() {
       isPreorder: false,
       isFastFood: true
     });
-    loadDBData();
+    // Real-time listener auto-refreshes menu
   };
 
   const handleEditDishSubmit = async (e: React.FormEvent) => {
@@ -172,23 +198,22 @@ export default function AdminDashboard() {
       });
       setIsEditModalOpen(false);
       setEditingItem(null);
-      loadDBData();
+      // Real-time listener auto-refreshes menu
     }
   };
 
   const handleDeleteDish = async (id: string) => {
     if (confirm('Are you sure you want to delete this homely delicacy from the menu?')) {
       await dbService.deleteMenuItem(id);
-      loadDBData();
+      // Real-time listener auto-refreshes menu
     }
   };
 
-  // KITCHEN GLOBAL SETTINGS SAVERS
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     await dbService.saveSettings(settings);
     alert('Kitchen Settings successfully saved and updated across user channels!');
-    loadDBData();
+    // Real-time listener auto-refreshes settings
   };
 
   if (!authorized) return null;

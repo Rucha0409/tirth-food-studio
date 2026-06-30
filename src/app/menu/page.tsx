@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import DailyBanner from '@/components/DailyBanner';
 import DishCard from '@/components/DishCard';
-import { MenuItem, dbService } from '@/lib/db';
+import { MenuItem, subscribeToMenu } from '@/lib/db';
 import { Search, SlidersHorizontal, RefreshCw, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function MenuPage() {
@@ -14,13 +14,10 @@ export default function MenuPage() {
   const [showSpecialsOnly, setShowSpecialsOnly] = useState(false);
   const [showVegOnly, setShowVegOnly] = useState(false);
 
-  // Load menu from local DB
+  // Real-time menu listener — updates instantly when admin adds/edits/removes dishes
   useEffect(() => {
-    const fetchMenu = async () => {
-      const data = await dbService.getMenu();
-      setMenu(data);
-    };
-    fetchMenu();
+    const unsub = subscribeToMenu((items) => setMenu(items));
+    return () => unsub();
   }, []);
 
   const categories = [

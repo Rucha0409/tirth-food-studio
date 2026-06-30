@@ -1,13 +1,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+// Firebase web config is intentionally public — security is enforced by Firestore Security Rules
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyBpE6oaN_cO_YPAvBZWIwgva48RqgUJxKc",
+  authDomain: "tirth-food-studio-b6f8f.firebaseapp.com",
+  projectId: "tirth-food-studio-b6f8f",
+  storageBucket: "tirth-food-studio-b6f8f.firebasestorage.app",
+  messagingSenderId: "938387646232",
+  appId: "1:938387646232:web:55e1c01fa0946684d9206d"
 };
 
 // Initialize Firebase safely for Next.js SSR

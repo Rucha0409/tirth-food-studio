@@ -1,6 +1,9 @@
 // Tirth - The Food Studio: Cloud Firebase Database Service Layer
 import { db } from './firebase';
-import { collection, doc, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
+import {
+  collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
+  onSnapshot, QuerySnapshot, DocumentData
+} from 'firebase/firestore';
 
 export interface MenuItem {
   id: string;
@@ -84,7 +87,7 @@ const SEED_COUPONS: Coupon[] = [
   { code: 'TIRTHFREE', discountPercent: 100, maxDiscount: 40, minOrder: 120, description: 'Get ₹40 off on your first homely order' }
 ];
 
-// EXACT MAHARASHTRIAN DISHES SEEDS
+// DEFAULT SEED MENU (used if Firestore is empty or offline)
 export const SEED_MENU: MenuItem[] = [
   { id: 'f1', name: 'Poli', nameDevnagari: 'पोळी', description: 'Fresh, soft hand-rolled wheat poli brushed with refined oil.', descriptionDevnagari: 'गव्हाची मऊ पोळी, हलके तेल लावलेली.', price: 17, category: 'customize', imageUrl: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=600&auto=format&fit=crop&q=60', isAvailable: true, isVeg: true, isSpecial: true, rating: 4.9, reviewsCount: 420, timeToPrepare: 5, isFastFood: true, isPreorder: false },
   { id: 'f2', name: 'Bhakri', nameDevnagari: 'भाकरी', description: 'Traditional hot hand-patted Jowar/Bajri bhakri roasted on iron tawa.', descriptionDevnagari: 'चुलीवरची खमंग आणि मऊ ज्वारी/बाजरीची भाकरी.', price: 27, category: 'customize', imageUrl: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=600&auto=format&fit=crop&q=60', isAvailable: true, isVeg: true, isSpecial: false, rating: 4.8, reviewsCount: 310, timeToPrepare: 8, isFastFood: true, isPreorder: false },
@@ -108,30 +111,96 @@ export const DEFAULT_SETTINGS: AdminSettings = {
   taxPercent: 5
 };
 
-// DB SERVICE ASYNC METHODS
-export const dbService = {
-  // MENU
-  async getMenu(): Promise<MenuItem[]> {
-    const snap = await getDocs(collection(db, 'menu'));
-    if (snap.empty) {
-      // Seed DB if empty
-      for (const item of SEED_MENU) {
-        await setDoc(doc(db, 'menu', item.id), item);
-      }
-      return SEED_MENU;
-    }
-    return snap.docs.map(d => d.data() as MenuItem);
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// REAL-TIME LISTENERS (onSnapshot) — changes reflect instantly across devices
+// ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Subscribe to menu in real-time. Returns an unsubscribe function.
+ * Automatically seeds DB with defaults if empty.
+ */
+export function subscribeToMenu(callback: (items: MenuItem[]) => void): () => void {
+  const colRef = collection(db, 'menu');
+  const unsub = onSnapshot(
+    colRef,
+    async (snap: QuerySnapshot<DocumentData>) => {
+      if (snap.empty) {
+        // Seed DB if empty — this seeds exactly once
+        for (const item of SEED_MENU) {
+          await setDoc(doc(db, 'menu', item.id), item).catch(() => {});
+        }
+        callback(SEED_MENU);
+      } else {
+        callback(snap.docs.map(d => d.data() as MenuItem));
+      }
+    },
+    (error) => {
+      console.error('[Tirth] Firestore menu error:', error);
+      // Fallback to seed menu so the page is never empty
+      callback(SEED_MENU);
+    }
+  );
+  return unsub;
+}
+
+/**
+ * Subscribe to settings in real-time. Returns an unsubscribe function.
+ */
+export function subscribeToSettings(callback: (settings: AdminSettings) => void): () => void {
+  const docRef = doc(db, 'settings', 'global');
+  const unsub = onSnapshot(
+    docRef,
+    async (snap) => {
+      if (!snap.exists()) {
+        await setDoc(docRef, DEFAULT_SETTINGS).catch(() => {});
+        callback(DEFAULT_SETTINGS);
+      } else {
+        callback(snap.data() as AdminSettings);
+      }
+    },
+    (error) => {
+      console.error('[Tirth] Firestore settings error:', error);
+      callback(DEFAULT_SETTINGS);
+    }
+  );
+  return unsub;
+}
+
+/**
+ * Subscribe to orders in real-time. Returns an unsubscribe function.
+ */
+export function subscribeToOrders(callback: (orders: Order[]) => void): () => void {
+  const colRef = collection(db, 'orders');
+  const unsub = onSnapshot(
+    colRef,
+    (snap: QuerySnapshot<DocumentData>) => {
+      const orders = snap.docs
+        .map(d => d.data() as Order)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      callback(orders);
+    },
+    (error) => {
+      console.error('[Tirth] Firestore orders error:', error);
+      callback([]);
+    }
+  );
+  return unsub;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DB SERVICE — write operations only (reads done via onSnapshot above)
+// ─────────────────────────────────────────────────────────────────────────────
+export const dbService = {
+  // MENU WRITES
   async addMenuItem(item: Omit<MenuItem, 'id'>): Promise<MenuItem> {
-    const newId = 'm_' + Math.random().toString(36).substr(2, 9);
+    const newId = 'm_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     const newItem = { ...item, id: newId };
     await setDoc(doc(db, 'menu', newId), newItem);
     return newItem;
   },
 
   async updateMenuItem(updatedItem: MenuItem): Promise<MenuItem> {
-    await updateDoc(doc(db, 'menu', updatedItem.id), updatedItem as any);
+    await updateDoc(doc(db, 'menu', updatedItem.id), updatedItem as unknown as Record<string, unknown>);
     return updatedItem;
   },
 
@@ -139,15 +208,19 @@ export const dbService = {
     await deleteDoc(doc(db, 'menu', id));
   },
 
-  // SETTINGS
+  // SETTINGS WRITES
   async getSettings(): Promise<AdminSettings> {
-    const docRef = doc(db, 'settings', 'global');
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) {
-      await setDoc(docRef, DEFAULT_SETTINGS);
+    try {
+      const docRef = doc(db, 'settings', 'global');
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        await setDoc(docRef, DEFAULT_SETTINGS);
+        return DEFAULT_SETTINGS;
+      }
+      return snap.data() as AdminSettings;
+    } catch {
       return DEFAULT_SETTINGS;
     }
-    return snap.data() as AdminSettings;
   },
 
   async saveSettings(settings: AdminSettings): Promise<void> {
@@ -156,8 +229,14 @@ export const dbService = {
 
   // ORDERS
   async getOrders(): Promise<Order[]> {
-    const snap = await getDocs(collection(db, 'orders'));
-    return snap.docs.map(d => d.data() as Order).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    try {
+      const snap = await getDocs(collection(db, 'orders'));
+      return snap.docs
+        .map(d => d.data() as Order)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch {
+      return [];
+    }
   },
 
   async createOrder(orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>): Promise<Order> {
@@ -169,24 +248,22 @@ export const dbService = {
       createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'orders', newOrder.id), newOrder);
-    
-    // Play sound in client
+
+    // Play notification sound
     if (typeof window !== 'undefined') {
       try {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav');
         audio.volume = 0.5;
         audio.play();
-      } catch(e){}
+      } catch (e) { /* ignore audio errors */ }
     }
     return newOrder;
   },
 
   async updateOrderStatus(orderId: string, status: Order['status'], paymentStatus?: Order['paymentStatus']): Promise<Order | null> {
-    const updates: any = { status };
+    const updates: Record<string, unknown> = { status };
     if (paymentStatus) updates.paymentStatus = paymentStatus;
-    
     await updateDoc(doc(db, 'orders', orderId), updates);
-    
     const snap = await getDoc(doc(db, 'orders', orderId));
     return snap.data() as Order;
   },
@@ -195,7 +272,6 @@ export const dbService = {
     const orders = await this.getOrders();
     const validOrders = orders.filter(o => o.status !== 'Cancelled');
     const todayStr = new Date().toISOString().split('T')[0];
-    
     const todayOrders = validOrders.filter(o => o.createdAt.startsWith(todayStr));
     const revenue = validOrders.reduce((sum, o) => sum + o.total, 0);
     const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
@@ -210,9 +286,7 @@ export const dbService = {
       });
     });
 
-    const topSelling = Object.values(itemsCount)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    const topSelling = Object.values(itemsCount).sort((a, b) => b.count - a.count).slice(0, 5);
 
     return {
       totalOrders: validOrders.length,
@@ -224,7 +298,7 @@ export const dbService = {
     };
   },
 
-  // COUPONS (hardcoded, not in Firestore)
+  // COUPONS (hardcoded)
   getCoupons(): Coupon[] {
     return SEED_COUPONS;
   },
@@ -238,8 +312,12 @@ export const dbService = {
 
   // SUBSCRIPTIONS
   async getSubscriptions(): Promise<Subscription[]> {
-    const snap = await getDocs(collection(db, 'subscriptions'));
-    return snap.docs.map(d => d.data() as Subscription);
+    try {
+      const snap = await getDocs(collection(db, 'subscriptions'));
+      return snap.docs.map(d => d.data() as Subscription);
+    } catch {
+      return [];
+    }
   },
 
   async createSubscription(subData: Omit<Subscription, 'id' | 'createdAt' | 'status' | 'daysRemaining'>): Promise<Subscription> {

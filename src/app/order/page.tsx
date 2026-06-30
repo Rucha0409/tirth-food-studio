@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), { ssr: false });
 
-import { dbService, MenuItem, Order } from '@/lib/db';
+import { dbService, subscribeToMenu, subscribeToSettings, MenuItem, Order } from '@/lib/db';
 import { geocodeAddress, getDeliveryCharge, DEFAULT_DELIVERY_CHARGE, MID_DELIVERY_CHARGE, MAX_DELIVERY_CHARGE, DELIVERY_THRESHOLD_KM, DELIVERY_MAX_THRESHOLD_KM } from '@/lib/delivery';
 import {
   User,
@@ -101,13 +101,12 @@ export default function OrderPage() {
     });
   };
 
-  // Fetch initial data
+  // Real-time data listeners
   useEffect(() => {
-    const fetchData = async () => {
-      setMenu(await dbService.getMenu());
-      setSettings(await dbService.getSettings());
-    };
-    fetchData();
+    // Subscribe to menu in real-time — updates instantly when admin changes anything
+    const unsubMenu = subscribeToMenu((items) => setMenu(items));
+    // Subscribe to settings in real-time
+    const unsubSettings = subscribeToSettings((s) => setSettings(s));
 
     // Default date to today
     const today = new Date();
@@ -130,6 +129,12 @@ export default function OrderPage() {
       if (loaded) console.log('Razorpay SDK preloaded successfully');
       else console.warn('Razorpay SDK preloading failed or script not found');
     });
+
+    // Cleanup: stop real-time listeners when leaving the page
+    return () => {
+      unsubMenu();
+      unsubSettings();
+    };
   }, []);
 
   // Calculate delivery charge when address changes (debounced)
@@ -401,13 +406,16 @@ export default function OrderPage() {
   };
 
 
-  const dailyItems = menu.filter(item => item.category === 'everyday' || item.category === 'customize');
-  const preorderItems = menu.filter(item => item.category === 'special');
+  const dailyItems = menu.filter(item => {
+    const cat = (item.category || '').toLowerCase();
+    return cat === 'everyday' || cat === 'customize';
+  });
+  const preorderItems = menu.filter(item => (item.category || '').toLowerCase() === 'special');
   const activeItems = activeTab === 'daily' ? dailyItems : preorderItems;
 
   // Daily Menu Sub-sections
-  const everydayTiffinItems = dailyItems.filter(item => item.category === 'everyday');
-  const customizedItems = dailyItems.filter(item => item.category === 'customize');
+  const everydayTiffinItems = dailyItems.filter(item => (item.category || '').toLowerCase() === 'everyday');
+  const customizedItems = dailyItems.filter(item => (item.category || '').toLowerCase() === 'customize');
 
   const maharashtraDistricts = [
     'Pune', 'Mumbai City', 'Mumbai Suburban', 'Satara', 'Thane', 
