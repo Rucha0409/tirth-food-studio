@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { ShoppingBag, Menu, X, ShieldAlert, Sparkles, RotateCcw } from 'lucide-react';
+import { ShoppingBag, Menu, X, ShieldAlert, Sparkles } from 'lucide-react';
 
 export default function Navbar() {
   const { cart, total } = useCart();
@@ -17,7 +17,6 @@ export default function Navbar() {
     { href: '/', label: 'Home' },
     { href: '/#about-us', label: 'About Us' },
     { href: '/order', label: 'Order Now', icon: Sparkles },
-    { href: '/reorder', label: 'Quick Reorder', icon: RotateCcw },
     { href: '/#contact-us', label: 'Contact' },
   ];
 
