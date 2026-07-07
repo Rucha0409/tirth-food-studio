@@ -3,9 +3,19 @@ import Razorpay from 'razorpay';
 
 export async function POST(req: Request) {
   try {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      return NextResponse.json(
+        { error: 'Razorpay credentials not configured on server.' },
+        { status: 500 }
+      );
+    }
+
     const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || 'dummy_key',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy_secret',
+      key_id: keyId,
+      key_secret: keySecret,
     });
 
     const body = await req.json();
@@ -13,19 +23,27 @@ export async function POST(req: Request) {
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
-        { error: 'Invalid amount' },
+        { error: 'Invalid amount. Must be greater than 0.' },
+        { status: 400 }
+      );
+    }
+
+    const amountInPaise = Math.round(amount * 100);
+    if (amountInPaise < 100) {
+      return NextResponse.json(
+        { error: 'Amount too small. Minimum is ₹1.' },
         { status: 400 }
       );
     }
 
     const options = {
-      amount: Math.round(amount * 100), // convert to paise
+      amount: amountInPaise,
       currency: 'INR',
-      receipt: 'order_rcptid_' + Math.floor(Math.random() * 1000000).toString(),
+      receipt: 'tirth_rcpt_' + Date.now().toString(),
     };
 
     const order = await razorpay.orders.create(options);
-    
+
     return NextResponse.json({
       orderId: order.id,
       amount: order.amount,
@@ -34,7 +52,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Razorpay Create Order Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
+      { error: error.error?.description || error.message || 'Internal Server Error' },
       { status: 500 }
     );
   }

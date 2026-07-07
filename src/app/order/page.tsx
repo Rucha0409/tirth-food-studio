@@ -324,7 +324,7 @@ export default function OrderPage() {
         }
 
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_T70jcHDk4sa0ej", // Client-exposed test key
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: orderData.amount, // from secure backend (in paise)
           currency: orderData.currency,
           order_id: orderData.orderId, // Secure backend order ID!
