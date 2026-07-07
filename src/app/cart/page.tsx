@@ -186,6 +186,11 @@ export default function CartPage() {
       origin: { y: 0.6 }
     });
 
+    // Automatically notify the admin on WhatsApp
+    setTimeout(() => {
+      window.open(getWhatsAppLink(newOrder), '_blank');
+    }, 1500);
+
     clearCart();
   };
 
