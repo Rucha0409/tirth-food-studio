@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 const DeliveryMap = dynamic(() => import('@/components/DeliveryMap'), { ssr: false });
 
 import { dbService, subscribeToMenu, subscribeToSettings, MenuItem, Order } from '@/lib/db';
-import { geocodeAddress, getDeliveryCharge, DEFAULT_DELIVERY_CHARGE, MID_DELIVERY_CHARGE, MAX_DELIVERY_CHARGE, DELIVERY_THRESHOLD_KM, DELIVERY_MAX_THRESHOLD_KM } from '@/lib/delivery';
+import { geocodeAddress, getDeliveryCharge, getRoadDistance, getDeliveryChargeForDistance, DEFAULT_DELIVERY_CHARGE, MID_DELIVERY_CHARGE, MAX_DELIVERY_CHARGE, DELIVERY_THRESHOLD_KM, DELIVERY_MAX_THRESHOLD_KM } from '@/lib/delivery';
 import {
   User,
   Phone,
@@ -153,7 +153,9 @@ export default function OrderPage() {
       try {
         const coords = await geocodeAddress(address);
         if (coords) {
-          const result = getDeliveryCharge(coords.lat, coords.lng);
+          // Calculate actual road distance (OSRM with haversine fallback)
+          const roadDist = await getRoadDistance(coords.lat, coords.lng);
+          const result = getDeliveryChargeForDistance(roadDist);
           setDeliveryCharge(result.charge);
           setDeliveryDistance(result.distanceKm);
           setDeliveryZone(result.zone);
@@ -211,8 +213,8 @@ export default function OrderPage() {
   const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * (quantities[item.id] || 0)), 0);
   
   const computedDeliveryCharge = (subtotal === 0 || subtotal >= settings.freeDeliveryAbove || deliveryType === 'Self Pickup') ? 0 : deliveryCharge;
-  const tax = Math.round((subtotal * settings.taxPercent) / 100);
-  const total = subtotal + computedDeliveryCharge + tax;
+  const tax = 0; // Forced to 0 as requested by the user
+  const total = subtotal + computedDeliveryCharge;
 
   const getWhatsAppLink = (order: Order) => {
     const space = '%20';
@@ -739,7 +741,7 @@ export default function OrderPage() {
                     ₹{total.toFixed(2)}
                   </span>
                   <span className="block text-[9px] text-charcoal/40 font-bold mt-0.5">
-                    Subtotal ₹{subtotal.toFixed(2)} + Delivery ₹{deliveryType === 'Self Pickup' ? '0' : computedDeliveryCharge} + Tax ₹{tax}
+                    Subtotal ₹{subtotal.toFixed(2)} + Delivery ₹{deliveryType === 'Self Pickup' ? '0' : computedDeliveryCharge}
                   </span>
                 </div>
               </div>

@@ -61,7 +61,7 @@ export default function DeliveryMap({
 
       storeMarker.current = L.marker([STORE_LAT, STORE_LNG], { icon: storeIcon })
         .addTo(map)
-        .bindPopup('<b>തീर्थ – Central Satvik Kitchen</b><br>Tarangan Residency, Dhayari')
+        .bindPopup('<b>तीर्थ – Central Satvik Kitchen</b><br>Tarangan Residency, Dhayari')
         .openPopup();
 
       leafletInstance.current = map;

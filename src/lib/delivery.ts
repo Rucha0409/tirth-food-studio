@@ -38,22 +38,47 @@ function toRad(deg: number): number {
 }
 
 /**
- * Get delivery charge based on distance from Tarangan Residency, Dhayari
- * @param customerLat Customer's latitude
- * @param customerLng Customer's longitude
- * @returns { charge: number, distanceKm: number, zone: string }
+ * Get estimated driving distance from straight-line (Haversine) distance
  */
-export function getDeliveryCharge(customerLat: number, customerLng: number): {
+export function getEstimatedRoadDistance(customerLat: number, customerLng: number): number {
+  const directDist = haversineDistance(STORE_LAT, STORE_LNG, customerLat, customerLng);
+  // 1.38 is the standard urban routing factor to approximate real-road driving distance in Pune
+  return Math.round(directDist * 1.38 * 10) / 10;
+}
+
+/**
+ * Get real road distance using OSRM driving route API
+ */
+export async function getRoadDistance(customerLat: number, customerLng: number): Promise<number> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5 second timeout
+
+    const response = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${STORE_LNG},${STORE_LAT};${customerLng},${customerLat}?overview=false`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    if (data && data.routes && data.routes.length > 0) {
+      const dist = data.routes[0].distance / 1000; // convert meters to km
+      return Math.round(dist * 10) / 10;
+    }
+  } catch (e) {
+    console.warn("[Tirth] OSRM routing failed, using estimated road distance:", e);
+  }
+  return getEstimatedRoadDistance(customerLat, customerLng);
+}
+
+/**
+ * Get delivery charge based on distance
+ */
+export function getDeliveryChargeForDistance(distanceKm: number): {
   charge: number;
   distanceKm: number;
   zone: string;
 } {
-  const distanceKm = haversineDistance(
-    STORE_LAT,
-    STORE_LNG,
-    customerLat,
-    customerLng
-  );
   const rounded = Math.round(distanceKm * 10) / 10;
 
   if (rounded <= 7) {
@@ -63,6 +88,18 @@ export function getDeliveryCharge(customerLat: number, customerLng: number): {
   } else {
     return { charge: 100, distanceKm: rounded, zone: 'Beyond 10 km' };
   }
+}
+
+/**
+ * Legacy synchronous delivery charge helper (uses estimated road distance)
+ */
+export function getDeliveryCharge(customerLat: number, customerLng: number): {
+  charge: number;
+  distanceKm: number;
+  zone: string;
+} {
+  const distanceKm = getEstimatedRoadDistance(customerLat, customerLng);
+  return getDeliveryChargeForDistance(distanceKm);
 }
 
 /**

@@ -127,8 +127,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     ? 0 
     : settings.deliveryCharge;
 
-  const tax = Math.round(((subtotal - discount) * settings.taxPercent) / 100);
-  const total = subtotal - discount + deliveryCharge + tax;
+  const tax = 0; // Forced to 0 as requested by the user
+  const total = subtotal - discount + deliveryCharge;
 
   // Auto-remove or validate coupon if cart items change
   useEffect(() => {

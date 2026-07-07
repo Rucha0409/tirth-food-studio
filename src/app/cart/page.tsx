@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { useCart } from '@/context/CartContext';
 import { dbService, Order } from '@/lib/db';
-import { geocodeAddress, getDeliveryCharge, DEFAULT_DELIVERY_CHARGE } from '@/lib/delivery';
+import { geocodeAddress, getDeliveryCharge, getRoadDistance, getDeliveryChargeForDistance, DEFAULT_DELIVERY_CHARGE } from '@/lib/delivery';
 import { 
   ShoppingBag, 
   Trash2, 
@@ -95,7 +95,9 @@ export default function CartPage() {
       try {
         const coords = await geocodeAddress(address);
         if (coords) {
-          const result = getDeliveryCharge(coords.lat, coords.lng);
+          // Calculate actual road distance (OSRM with haversine fallback)
+          const roadDist = await getRoadDistance(coords.lat, coords.lng);
+          const result = getDeliveryChargeForDistance(roadDist);
           setLocalDeliveryCharge(result.charge);
           setLocalDistance(result.distanceKm);
           setLocalZone(result.zone);
@@ -116,7 +118,7 @@ export default function CartPage() {
 
   // Local delivery calculations
   const finalDeliveryCharge = (subtotal === 0 || subtotal >= settings.freeDeliveryAbove) ? 0 : localDeliveryCharge;
-  const finalTotal = subtotal - discount + finalDeliveryCharge + tax;
+  const finalTotal = subtotal - discount + finalDeliveryCharge;
 
   // Save User Info on input change
   const saveUserInfo = (n: string, p: string, a: string) => {
@@ -509,10 +511,6 @@ export default function CartPage() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-charcoal/70 font-semibold">
-                      <span>GST (5%)</span>
-                      <span className="font-outfit text-charcoal font-bold">₹{tax}</span>
-                    </div>
                   </div>
 
                   {/* Grand total */}
