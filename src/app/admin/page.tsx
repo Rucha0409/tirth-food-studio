@@ -5,19 +5,24 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldAlert, Key, Sparkles, ArrowRight, Lock, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 
-// SHA-256 hash function using Web Crypto API
-async function sha256(message: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Pre-computed SHA-256 hash of "TirthAdmin2026"
-const ADMIN_PASS_HASH = '5a8d09f5e95a4eb0a8c9c3b6c29e6cb1e4f2d8a73e1b5c2d9f0a4e7b8c3d1f6e';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours (1 day)
+
+// Helper to format countdown in a user-friendly way
+const formatCountdown = (remainingMs: number) => {
+  const hours = Math.floor(remainingMs / (3600 * 1000));
+  const mins = Math.floor((remainingMs % (3600 * 1000)) / 60000);
+  const secs = Math.floor((remainingMs % 60000) / 1000);
+
+  const parts = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (mins > 0 || hours > 0) parts.push(`${mins}m`);
+  parts.push(`${secs}s`);
+  return parts.join(' ');
+};
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -31,7 +36,7 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if already logged in
+    // 1. Check if already logged in
     const sessionToken = localStorage.getItem('tirth_admin_session');
     const sessionExpiry = localStorage.getItem('tirth_admin_session_expiry');
     
@@ -39,32 +44,51 @@ export default function AdminLogin() {
       const expiry = parseInt(sessionExpiry);
       if (Date.now() < expiry) {
         router.push('/admin/dashboard');
+        return;
       } else {
-        // Session expired, clear it
         localStorage.removeItem('tirth_admin_session');
         localStorage.removeItem('tirth_admin_session_expiry');
         localStorage.removeItem('tirth_admin_logged');
       }
     }
 
-    // Check lockout status
-    const lockoutEnd = localStorage.getItem('tirth_admin_lockout');
-    if (lockoutEnd) {
-      const end = parseInt(lockoutEnd);
-      if (Date.now() < end) {
-        setIsLocked(true);
-        setLockoutEndTime(end);
-      } else {
-        localStorage.removeItem('tirth_admin_lockout');
-        localStorage.removeItem('tirth_admin_attempts');
+    // 2. Fetch lockout status from Firestore to prevent bypass by clearing localStorage
+    const checkLockout = async () => {
+      try {
+        const docRef = doc(db, 'admin', 'lockout');
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          const end = data.lockoutEnd || 0;
+          const dbAttempts = data.attempts || 0;
+          
+          setAttempts(dbAttempts);
+          
+          if (Date.now() < end) {
+            setIsLocked(true);
+            setLockoutEndTime(end);
+          } else if (end > 0) {
+            // Lockout expired, reset it in cloud
+            await setDoc(docRef, { attempts: 0, lockoutEnd: 0 });
+            setIsLocked(false);
+            setAttempts(0);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch Firestore lockout status, falling back to local:", err);
+        // Fallback to local storage
+        const localEnd = localStorage.getItem('tirth_admin_lockout');
+        if (localEnd) {
+          const end = parseInt(localEnd);
+          if (Date.now() < end) {
+            setIsLocked(true);
+            setLockoutEndTime(end);
+          }
+        }
       }
-    }
+    };
 
-    // Restore attempt count
-    const storedAttempts = localStorage.getItem('tirth_admin_attempts');
-    if (storedAttempts) {
-      setAttempts(parseInt(storedAttempts));
-    }
+    checkLockout();
   }, [router]);
 
   // Lockout countdown timer
@@ -81,9 +105,7 @@ export default function AdminLogin() {
         setLockCountdown('');
         clearInterval(interval);
       } else {
-        const mins = Math.floor(remaining / 60000);
-        const secs = Math.floor((remaining % 60000) / 1000);
-        setLockCountdown(`${mins}:${secs.toString().padStart(2, '0')}`);
+        setLockCountdown(formatCountdown(remaining));
       }
     }, 1000);
 
@@ -101,36 +123,86 @@ export default function AdminLogin() {
 
     setIsLoading(true);
 
-    // Verify password: compare against known passphrase
-    // Using direct comparison since we control the environment
-    // In production, this would use server-side auth with bcrypt
-    if (password === 'TirthAdmin2026') {
-      // Generate session token
-      const sessionToken = crypto.randomUUID();
-      const sessionExpiry = Date.now() + (12 * 60 * 60 * 1000); // 12 hour session
+    try {
+      // 1. Fetch latest state from Firestore first to block immediate multi-device attacks
+      const docRef = doc(db, 'admin', 'lockout');
+      const snap = await getDoc(docRef);
+      let currentAttempts = 0;
+      let currentLockoutEnd = 0;
 
-      localStorage.setItem('tirth_admin_session', sessionToken);
-      localStorage.setItem('tirth_admin_session_expiry', sessionExpiry.toString());
-      localStorage.setItem('tirth_admin_logged', 'true');
-      localStorage.removeItem('tirth_admin_attempts');
-      localStorage.removeItem('tirth_admin_lockout');
+      if (snap.exists()) {
+        const data = snap.data();
+        currentAttempts = data.attempts || 0;
+        currentLockoutEnd = data.lockoutEnd || 0;
+      }
 
-      // Small delay for UX
-      await new Promise(resolve => setTimeout(resolve, 600));
-      router.push('/admin/dashboard');
-    } else {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      localStorage.setItem('tirth_admin_attempts', newAttempts.toString());
-
-      if (newAttempts >= MAX_ATTEMPTS) {
-        const lockEnd = Date.now() + LOCKOUT_DURATION_MS;
+      if (Date.now() < currentLockoutEnd) {
         setIsLocked(true);
-        setLockoutEndTime(lockEnd);
-        localStorage.setItem('tirth_admin_lockout', lockEnd.toString());
-        setError(`Too many failed attempts. Account locked for 5 minutes.`);
+        setLockoutEndTime(currentLockoutEnd);
+        setError(`Portal locked. Try again later.`);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Validate password
+      if (password === 'TirthAdmin2026') {
+        // Reset lockout document in Firestore upon success
+        await setDoc(docRef, { attempts: 0, lockoutEnd: 0 });
+        
+        // Generate session token
+        const sessionToken = crypto.randomUUID();
+        const sessionExpiry = Date.now() + (12 * 60 * 60 * 1000); // 12 hour session
+
+        localStorage.setItem('tirth_admin_session', sessionToken);
+        localStorage.setItem('tirth_admin_session_expiry', sessionExpiry.toString());
+        localStorage.setItem('tirth_admin_logged', 'true');
+
+        await new Promise(resolve => setTimeout(resolve, 600));
+        router.push('/admin/dashboard');
       } else {
-        setError(`Invalid passkey. ${MAX_ATTEMPTS - newAttempts} attempts remaining.`);
+        const newAttempts = currentAttempts + 1;
+        setAttempts(newAttempts);
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const lockEnd = Date.now() + LOCKOUT_DURATION_MS;
+          setIsLocked(true);
+          setLockoutEndTime(lockEnd);
+          
+          // Save to Firestore
+          await setDoc(docRef, { attempts: newAttempts, lockoutEnd: lockEnd });
+          // Save local backup
+          localStorage.setItem('tirth_admin_lockout', lockEnd.toString());
+          setError(`Too many failed attempts. Admin portal locked for 24 hours.`);
+        } else {
+          // Save incremented attempts to Firestore
+          await setDoc(docRef, { attempts: newAttempts, lockoutEnd: 0 });
+          setError(`Invalid passkey. ${MAX_ATTEMPTS - newAttempts} attempts remaining.`);
+        }
+      }
+    } catch (err) {
+      console.error("Firestore operations failed during login, falling back to local:", err);
+      // Fallback local storage logic
+      if (password === 'TirthAdmin2026') {
+        const sessionToken = crypto.randomUUID();
+        const sessionExpiry = Date.now() + (12 * 60 * 60 * 1000);
+        localStorage.setItem('tirth_admin_session', sessionToken);
+        localStorage.setItem('tirth_admin_session_expiry', sessionExpiry.toString());
+        localStorage.setItem('tirth_admin_logged', 'true');
+        router.push('/admin/dashboard');
+      } else {
+        const localAttempts = (parseInt(localStorage.getItem('tirth_admin_attempts') || '0')) + 1;
+        localStorage.setItem('tirth_admin_attempts', localAttempts.toString());
+        setAttempts(localAttempts);
+
+        if (localAttempts >= MAX_ATTEMPTS) {
+          const lockEnd = Date.now() + LOCKOUT_DURATION_MS;
+          setIsLocked(true);
+          setLockoutEndTime(lockEnd);
+          localStorage.setItem('tirth_admin_lockout', lockEnd.toString());
+          setError(`Too many failed attempts. Admin portal locked for 24 hours.`);
+        } else {
+          setError(`Invalid passkey. ${MAX_ATTEMPTS - localAttempts} attempts remaining.`);
+        }
       }
     }
 
