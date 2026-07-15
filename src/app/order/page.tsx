@@ -281,16 +281,8 @@ export default function OrderPage() {
       origin: { y: 0.5 }
     });
 
-    // Fire automatic WhatsApp notifications to both customer and admin in the background
-    try {
-      await fetch('/api/whatsapp/send-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order: newOrder, adminPhone: '8380070757' })
-      });
-    } catch (err) {
-      console.error('Automated WhatsApp send failed:', err);
-    }
+    // Redirect directly to WhatsApp immediately to send the receipt
+    window.location.href = getWhatsAppLink(newOrder);
   };
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {
