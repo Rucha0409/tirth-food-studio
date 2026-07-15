@@ -1001,21 +1001,25 @@ export default function OrderPage() {
               <span className="block mt-1 text-[10px] text-emerald-600 font-mono">Payment ID: {successOrder.paymentId || 'pay_mock'}</span>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => setSuccessOrder(null)}
-                className="p-3.5 bg-leaf hover:bg-leaf-dark text-white font-bold rounded-2xl text-xs cursor-pointer tracking-wider uppercase text-center"
-              >
-                Done – Back to Menu
-              </button>
+            <div className="flex flex-col gap-2.5">
               <a
                 href={getWhatsAppLink(successOrder)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-xs text-emerald-600 hover:text-emerald-700 font-bold flex items-center justify-center gap-1.5 uppercase text-center cursor-pointer justify-center"
+                onClick={() => {
+                  // After they click to send on WhatsApp, close the success view and return to menu
+                  setTimeout(() => setSuccessOrder(null), 1000);
+                }}
+                className="p-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs cursor-pointer tracking-wider uppercase text-center flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
               >
-                Send Receipt on WhatsApp (Optional) <ArrowRight className="w-3.5 h-3.5" />
+                Confirm & Send Receipt on WhatsApp <ArrowRight className="w-3.5 h-3.5" />
               </a>
+              <button
+                onClick={() => setSuccessOrder(null)}
+                className="p-2 text-[10px] text-charcoal/50 hover:text-charcoal hover:underline font-bold uppercase text-center cursor-pointer"
+              >
+                Back to Menu
+              </button>
             </div>
 
           </div>
