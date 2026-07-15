@@ -281,10 +281,16 @@ export default function OrderPage() {
       origin: { y: 0.5 }
     });
 
-    // Automatically notify the admin on WhatsApp
-    setTimeout(() => {
-      window.open(getWhatsAppLink(newOrder), '_blank');
-    }, 1500); // 1.5 second delay allows confetti to pop and UI to settle
+    // Fire automatic WhatsApp notifications to both customer and admin in the background
+    try {
+      await fetch('/api/whatsapp/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder, adminPhone: '8380070757' })
+      });
+    } catch (err) {
+      console.error('Automated WhatsApp send failed:', err);
+    }
   };
 
   const handleCheckoutSubmit = async (e: React.FormEvent) => {

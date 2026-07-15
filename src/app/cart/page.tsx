@@ -186,10 +186,16 @@ export default function CartPage() {
       origin: { y: 0.6 }
     });
 
-    // Automatically notify the admin on WhatsApp
-    setTimeout(() => {
-      window.open(getWhatsAppLink(newOrder), '_blank');
-    }, 1500);
+    // Fire automatic WhatsApp notifications to both customer and admin in the background
+    try {
+      await fetch('/api/whatsapp/send-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder, adminPhone: '8380070757' })
+      });
+    } catch (err) {
+      console.error('Automated WhatsApp send failed:', err);
+    }
 
     clearCart();
   };
